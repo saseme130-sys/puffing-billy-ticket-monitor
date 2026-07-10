@@ -1,0 +1,12 @@
+# 密钥与本地文件，绝不提交
+secrets.local.json
+.env
+
+# 运行时产物
+state.json
+monitor.log
+__pycache__/
+*.pyc
+
+# 系统
+.DS_Store

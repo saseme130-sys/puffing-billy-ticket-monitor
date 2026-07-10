@@ -1,0 +1,33 @@
+name: 小火车余票监控
+
+on:
+  schedule:
+    # 每 5 分钟查一次余票（UTC，与本地时区无关）
+    # GitHub 定时任务可能有几分钟延迟，属正常
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # 手动触发按钮
+
+# 避免上一轮没跑完时并发堆积
+concurrency:
+  group: ticket-monitor
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # 纯标准库实现，无需 pip install，跑得快
+
+      - name: 检查余票
+        env:
+          WXPUSHER_SPT: ${{ secrets.WXPUSHER_SPT }}
+          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          TARGET_DATES: ${{ vars.TARGET_DATES }}
+          ROUTE_CODE: ${{ vars.ROUTE_CODE }}
+        run: python check_ticket.py

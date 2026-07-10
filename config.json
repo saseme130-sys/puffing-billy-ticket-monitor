@@ -1,0 +1,19 @@
+{
+  "target_dates": ["29/08/2026"],
+  "route_code": "BEL-LAK",
+  "route_name_hint": "Belgrave to Lakeside",
+  "passengers": { "adult": 2, "child": 1 },
+
+  "poll_interval_seconds": 240,
+  "jitter_seconds": 90,
+
+  "notify": {
+    "wxpusher_spt": "",
+    "pushplus_token": "",
+    "pushplus_topic": "",
+    "macos_notification": true,
+    "terminal_bell": true,
+    "notify_on_first_seen": true,
+    "renotify_available_every_minutes": 30
+  }
+}
