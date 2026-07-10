@@ -244,23 +244,30 @@ def send_all(cfg, title, subtitle, lines):
     terminal_bell(cfg)
     notify_macos(cfg, title, subtitle, subtitle)
 
-    sent_wx = False
+    serverchan = notify_serverchan(cfg, title, content_md)
+    if serverchan is not None:
+        ok, info = serverchan
+        if ok:
+            log("✅ Server酱微信推送成功")
+            return True
+        log("⚠️ Server酱推送失败: {}".format(info))
+
     wx = notify_wxpusher(cfg, title, content_md, subtitle)
     if wx is not None:
         ok, info = wx
         if ok:
-            sent_wx = True
             log("✅ WxPusher 微信推送成功")
-        else:
-            log("⚠️ WxPusher 未发送: {}".format(info))
+            return True
+        log("⚠️ WxPusher 未发送: {}".format(info))
 
-    # 若未配 WxPusher 或发送失败，则尝试 PushPlus
-    if not sent_wx:
+    if (cfg.get("notify", {}).get("pushplus_token") or "").strip():
         ok, info = notify_pushplus(cfg, title, content_md)
         if ok:
             log("✅ PushPlus 微信推送成功")
-        else:
-            log("⚠️ PushPlus 未发送: {}".format(info))
+            return True
+        log("⚠️ PushPlus 未发送: {}".format(info))
+
+    return False
 
 
 # ----------------------------- 主循环 -----------------------------
@@ -345,7 +352,8 @@ def apply_secret_overrides(cfg):
     cfg.setdefault("notify", {})
     # 1) 本地 gitignore 的密钥文件（方便本地常驻运行）
     local = load_json(os.path.join(HERE, "secrets.local.json"), {})
-    for k in ("wxpusher_spt", "pushplus_token", "pushplus_topic"):
+    for k in ("serverchan_key", "wxpusher_spt",
+              "pushplus_token", "pushplus_topic"):
         if local.get(k):
             cfg["notify"][k] = local[k]
     # 2) 环境变量优先级最高（云端/CI 用）
@@ -353,6 +361,8 @@ def apply_secret_overrides(cfg):
         cfg["notify"]["wxpusher_spt"] = os.getenv("WXPUSHER_SPT").strip()
     if os.getenv("PUSHPLUS_TOKEN", "").strip():
         cfg["notify"]["pushplus_token"] = os.getenv("PUSHPLUS_TOKEN").strip()
+    if os.getenv("SERVERCHAN_KEY", "").strip():
+        cfg["notify"]["serverchan_key"] = os.getenv("SERVERCHAN_KEY").strip()
     return cfg
 
 

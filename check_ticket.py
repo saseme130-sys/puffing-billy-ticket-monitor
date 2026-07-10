@@ -53,6 +53,7 @@ def main():
         return 2  # 让 Actions 标记失败，便于发现网站变动
 
     any_bookable = False
+    delivery_failed = False
     for target in targets:
         ev = monitor.evaluate_date(av, target, route)
         print("{} | 车次:{} | 整体:{} | 可订:{}".format(
@@ -60,10 +61,14 @@ def main():
         if ev["bookable"]:
             any_bookable = True
             title, sub, lines = monitor.build_notice(target, ev, cfg, "bookable")
-            monitor.send_all(cfg, title, sub, lines)
+            if not monitor.send_all(cfg, title, sub, lines):
+                delivery_failed = True
 
     if not any_bookable:
         print("目标日期暂无可订票，本次静默。")
+    if delivery_failed:
+        print("目标车次可订，但所有通知渠道均发送失败。")
+        return 3
     return 0
 
 
