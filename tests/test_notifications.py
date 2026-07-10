@@ -32,6 +32,16 @@ class ServerChanTests(unittest.TestCase):
 
         self.assertEqual(result, (False, "bad sendkey"))
 
+    def test_malformed_response_is_a_failure(self):
+        cfg = {"notify": {"serverchan_key": "SCT_test"}}
+
+        with patch("monitor.http", return_value="not-json"):
+            ok, info = monitor.notify_serverchan(
+                cfg, "Ticket alert", "Available")
+
+        self.assertFalse(ok)
+        self.assertTrue(info)
+
     def test_missing_key_is_skipped(self):
         result = monitor.notify_serverchan(
             {"notify": {}}, "Ticket alert", "Available")

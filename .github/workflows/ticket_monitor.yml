@@ -5,7 +5,13 @@ on:
     # 每小时查一次余票（UTC，与本地时区无关）
     # GitHub 定时任务可能有几分钟延迟，属正常
     - cron: '0 * * * *'
-  workflow_dispatch:  # 手动触发按钮
+  workflow_dispatch:
+    inputs:
+      test_notification:
+        description: '只发送 Server酱测试通知，不查询余票'
+        required: false
+        default: false
+        type: boolean
 
 # 避免上一轮没跑完时并发堆积
 concurrency:
@@ -26,8 +32,8 @@ jobs:
 
       - name: 检查余票
         env:
-          WXPUSHER_SPT: ${{ secrets.WXPUSHER_SPT }}
-          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
+          SERVERCHAN_KEY: ${{ secrets.SERVERCHAN_KEY }}
+          TEST_NOTIFICATION: ${{ inputs.test_notification || 'false' }}
           TARGET_DATES: ${{ vars.TARGET_DATES }}
           ROUTE_CODE: ${{ vars.ROUTE_CODE }}
         run: python check_ticket.py

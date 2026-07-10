@@ -8,6 +8,7 @@
   "jitter_seconds": 90,
 
   "notify": {
+    "serverchan_key": "",
     "wxpusher_spt": "",
     "pushplus_token": "",
     "pushplus_topic": "",

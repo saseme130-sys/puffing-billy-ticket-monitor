@@ -2,12 +2,12 @@
 # -*- coding: utf-8 -*-
 """
 Puffing Billy Railway 余票监控 Bot
-监控指定日期 / 车次的余票，出票即通过 PushPlus(微信) + macOS 弹窗 + 终端响铃 通知。
+监控指定日期 / 车次的余票，出票即通过 Server酱(微信) + macOS 弹窗 + 终端响铃通知。
 
 用法:
     python3 monitor.py            # 按 config.json 持续监控
     python3 monitor.py --once     # 只查一次(测试用)
-    python3 monitor.py --test-push  # 发一条测试通知，验证 PushPlus 是否配好
+    python3 monitor.py --test-push  # 发一条测试通知，验证远程通知是否配好
 
 配置见 config.json。纯标准库，无需 pip install。
 """
@@ -376,9 +376,9 @@ def main():
 
     if "--test-push" in args:
         log("发送测试通知...")
-        send_all(cfg, "✅ 测试通知", "PushPlus 配好了！",
+        send_all(cfg, "✅ 测试通知", "远程通知通道已配置",
                  ["## 这是一条来自 Puffing Billy 监控 bot 的测试消息",
-                  "如果你在微信里看到它，说明 PushPlus 配置成功。"])
+                  "如果你在微信里看到它，说明通知配置成功。"])
         return
 
     state = load_json(STATE_PATH, {})
@@ -395,9 +395,10 @@ def main():
     log("=== Puffing Billy 监控启动 ===")
     log("目标: {} | 车次: {} | 间隔: {}s(±{}s)".format(
         cfg.get("target_dates"), cfg.get("route_code"), interval, jitter))
-    if not (cfg.get("notify", {}).get("pushplus_token") or "").strip():
-        log("⚠️ 尚未配置 pushplus_token，微信不会推送（仍有 Mac 弹窗+响铃）。"
-            "填好 config.json 后重启即可。")
+    remote_keys = ("serverchan_key", "wxpusher_spt", "pushplus_token")
+    if not any((cfg.get("notify", {}).get(k) or "").strip()
+               for k in remote_keys):
+        log("⚠️ 尚未配置远程通知，微信不会推送（仍有 Mac 弹窗+响铃）。")
 
     fails = 0
     while True:

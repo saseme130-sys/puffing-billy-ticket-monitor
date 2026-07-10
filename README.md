@@ -7,13 +7,13 @@
 
 ---
 
-## ⭐ 当前生效方案：云端 24/7（GitHub Actions + WxPusher）
+## ⭐ 当前生效方案：云端 24/7（GitHub Actions + Server酱）
 
 **不用一直开着电脑**，已部署到云端每小时自动查一次：
 
 - 仓库：`saseme130-sys/puffing-billy-ticket-monitor`（个人号，Actions 免费）
 - 定时：`.github/workflows/ticket_monitor.yml`，cron `0 * * * *`（每小时整点）
-- 通知：**WxPusher 微信推送**（免实名，扫码即用）
+- 通知：**Server酱微信推送**
 - 逻辑：`check_ticket.py` 无状态查询，**只有目标车次变为可订才推送微信**，售罄则静默
 
 ### 日常操作（在个人号仓库上）
@@ -21,16 +21,18 @@
 命令统一加 `env -u GH_TOKEN` 前缀（本机默认 gh 账号是企业号，需绕过）：
 
 ```bash
-# 手动立即查一次
+# 手动立即查一次（无票时静默）
 env -u GH_TOKEN gh workflow run ticket_monitor.yml
+# 只测试微信通知，不查询余票
+env -u GH_TOKEN gh workflow run ticket_monitor.yml -f test_notification=true
 # 看最近运行
 env -u GH_TOKEN gh run list --workflow=ticket_monitor.yml --limit 5
 
 # 改监控日期 / 车次（改完下次运行即生效，无需改代码）
 env -u GH_TOKEN gh variable set TARGET_DATES --body "29/08/2026"   # 多个用逗号分隔
 env -u GH_TOKEN gh variable set ROUTE_CODE   --body "BEL-LAK"
-# 换微信 SPT
-env -u GH_TOKEN gh secret set WXPUSHER_SPT --body "SPT_xxxxx"
+# 更新 Server酱 SendKey（通过交互输入，避免出现在命令历史）
+env -u GH_TOKEN gh secret set SERVERCHAN_KEY
 ```
 
 - **改频率**：编辑 workflow 里的 `cron`（如 `0 */2 * * *`=每 2 小时）后 push。
@@ -55,26 +57,24 @@ env -u GH_TOKEN gh secret set WXPUSHER_SPT --body "SPT_xxxxx"
 
 ---
 
-## 二、配置微信通知（PushPlus）
+## 二、配置微信通知（Server酱）
 
-1. 手机微信扫码关注并登录 **PushPlus**：https://www.pushplus.plus
-2. 在「一对一推送」页面复制你的 **token**
-3. 打开本目录的 `config.json`，把 token 填进去：
+云端使用仓库 Actions Secret `SERVERCHAN_KEY`，SendKey 不会进入公开代码。
+本地运行时，把 SendKey 放在已被 `.gitignore` 忽略的 `secrets.local.json`：
 
 ```json
-"notify": {
-  "pushplus_token": "把你的token粘贴到这里",
-  ...
+{
+  "serverchan_key": "SCT_xxxxx"
 }
 ```
 
-4. 验证是否配好（会给你微信发一条测试消息）：
+本地测试：
 
 ```bash
 python3 monitor.py --test-push
 ```
 
-> 不配 token 也能用——仍会有 **macOS 弹窗 + 终端响铃**，只是没有微信推送。
+> 不配 SendKey 也能本地运行——仍会有 **macOS 弹窗 + 终端响铃**，只是没有微信推送。
 
 ---
 
@@ -105,8 +105,7 @@ Mac 需装了 Python 3（系统自带）。**无需 pip 安装任何东西**。
 | `route_code` | 车次代码。`BEL-LAK`=Belgrave→Lakeside；`BEL-GEM`=Belgrave→Gembrook |
 | `poll_interval_seconds` | 轮询间隔（秒），默认 240=4分钟 |
 | `jitter_seconds` | 随机抖动，避免规律请求（礼貌+防封） |
-| `pushplus_token` | PushPlus 微信推送 token |
-| `pushplus_topic` | （可选）群组推送 topic，一对一留空即可 |
+| `serverchan_key` | Server酱 SendKey；生产环境使用 GitHub Secret |
 | `macos_notification` | 是否弹 Mac 通知 |
 | `terminal_bell` | 是否终端响铃 |
 | `notify_on_first_seen` | 目标日期首次进入可售窗口时是否通知 |

@@ -9,8 +9,8 @@
   - 配置从环境变量读取，回落 config.json
 
 环境变量：
-  WXPUSHER_SPT     WxPusher 极简推送 token（必填才会推微信）
-  PUSHPLUS_TOKEN   （可选）PushPlus token，作为备用
+  SERVERCHAN_KEY   Server酱 SendKey（必填才会推微信）
+  TEST_NOTIFICATION 设为 true 时只发送测试通知，不查询余票
   TARGET_DATES     （可选）逗号分隔，如 "29/08/2026,30/08/2026"，覆盖 config.json
   ROUTE_CODE       （可选）如 "BEL-LAK"
 
