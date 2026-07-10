@@ -7,6 +7,40 @@
 
 ---
 
+## ⭐ 当前生效方案：云端 24/7（GitHub Actions + WxPusher）
+
+**不用一直开着电脑**，已部署到云端每小时自动查一次：
+
+- 仓库：`saseme130-sys/puffing-billy-ticket-monitor`（个人号，Actions 免费）
+- 定时：`.github/workflows/ticket_monitor.yml`，cron `0 * * * *`（每小时整点）
+- 通知：**WxPusher 微信推送**（免实名，扫码即用）
+- 逻辑：`check_ticket.py` 无状态查询，**只有目标车次变为可订才推送微信**，售罄则静默
+
+### 日常操作（在个人号仓库上）
+
+命令统一加 `env -u GH_TOKEN` 前缀（本机默认 gh 账号是企业号，需绕过）：
+
+```bash
+# 手动立即查一次
+env -u GH_TOKEN gh workflow run ticket_monitor.yml
+# 看最近运行
+env -u GH_TOKEN gh run list --workflow=ticket_monitor.yml --limit 5
+
+# 改监控日期 / 车次（改完下次运行即生效，无需改代码）
+env -u GH_TOKEN gh variable set TARGET_DATES --body "29/08/2026"   # 多个用逗号分隔
+env -u GH_TOKEN gh variable set ROUTE_CODE   --body "BEL-LAK"
+# 换微信 SPT
+env -u GH_TOKEN gh secret set WXPUSHER_SPT --body "SPT_xxxxx"
+```
+
+- **改频率**：编辑 workflow 里的 `cron`（如 `0 */2 * * *`=每 2 小时）后 push。
+- **暂停 / 恢复**：仓库 Actions 页面 Disable/Enable，或删掉 workflow 文件。
+- ⚠️ GitHub 会在仓库 **60 天无活动**后自动停用定时任务；长期不动的话偶尔 push 一下即可。
+
+> 下面的「本地运行」部分是备用方式（关电脑就停），云端方案已覆盖 24/7 需求，一般无需再本地跑，**避免两边同时跑导致重复通知**。
+
+---
+
 ## 一、工作原理
 
 网站的余票其实来自一个后台 JSON 接口。bot 直接、轻量地查这个接口（不用一直开浏览器）：
