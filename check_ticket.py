@@ -39,6 +39,22 @@ def main():
     cfg["notify"]["macos_notification"] = False
     cfg["notify"]["terminal_bell"] = False
 
+    if os.getenv("TEST_NOTIFICATION", "").strip().lower() == "true":
+        delivered = monitor.send_all(
+            cfg,
+            "✅ 小火车监控测试",
+            "Server酱微信通知通道",
+            [
+                "这是一条来自 Puffing Billy 余票监控的测试消息。",
+                "收到此消息说明 Server酱通知通道工作正常。",
+            ],
+        )
+        if delivered:
+            print("测试通知发送成功。")
+            return 0
+        print("测试通知发送失败。")
+        return 3
+
     targets = cfg.get("target_dates", [])
     route = cfg.get("route_code", "BEL-LAK")
     if not targets:

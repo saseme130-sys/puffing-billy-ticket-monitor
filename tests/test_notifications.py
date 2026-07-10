@@ -111,6 +111,42 @@ class ServerChanTests(unittest.TestCase):
         self.assertEqual(result, 3)
         send_all.assert_called_once()
 
+    @patch("check_ticket.monitor.fetch_availability")
+    @patch("check_ticket.monitor.fetch_oid_token")
+    @patch("check_ticket.monitor.send_all", return_value=True)
+    def test_notification_mode_sends_without_fetching_tickets(
+            self, send_all, fetch_token, fetch_availability):
+        cfg = {"notify": {}}
+
+        with patch("check_ticket.monitor.load_json", return_value=cfg), \
+                patch("check_ticket.monitor.apply_secret_overrides",
+                      side_effect=lambda value: value), \
+                patch.dict(os.environ, {"TEST_NOTIFICATION": "true"},
+                           clear=True):
+            result = check_ticket.main()
+
+        self.assertEqual(result, 0)
+        self.assertIn("测试", send_all.call_args.args[1])
+        fetch_token.assert_not_called()
+        fetch_availability.assert_not_called()
+
+    @patch("check_ticket.monitor.fetch_oid_token")
+    @patch("check_ticket.monitor.send_all", return_value=False)
+    def test_notification_mode_fails_when_delivery_fails(
+            self, send_all, fetch_token):
+        cfg = {"notify": {}}
+
+        with patch("check_ticket.monitor.load_json", return_value=cfg), \
+                patch("check_ticket.monitor.apply_secret_overrides",
+                      side_effect=lambda value: value), \
+                patch.dict(os.environ, {"TEST_NOTIFICATION": "true"},
+                           clear=True):
+            result = check_ticket.main()
+
+        self.assertEqual(result, 3)
+        send_all.assert_called_once()
+        fetch_token.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()
