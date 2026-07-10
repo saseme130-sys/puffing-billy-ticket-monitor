@@ -147,6 +147,31 @@ def evaluate_date(av_list, target_date, route_code):
 
 
 # ----------------------------- 通知 -----------------------------
+def notify_serverchan(cfg, title, content_md):
+    key = (cfg.get("notify", {}).get("serverchan_key") or "").strip()
+    if not key:
+        return None
+    payload = urllib.parse.urlencode({
+        "title": title[:100],
+        "desp": content_md,
+    })
+    try:
+        raw = http(
+            "https://sctapi.ftqq.com/{}.send".format(key),
+            data=payload,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            },
+            timeout=20,
+        )
+        resp = json.loads(raw)
+        ok = resp.get("code") == 0
+        info = resp.get("message") or resp.get("msg") or raw[:200]
+        return ok, info
+    except Exception as e:
+        return False, str(e)
+
+
 def notify_wxpusher(cfg, title, content_md, summary):
     spt = (cfg.get("notify", {}).get("wxpusher_spt") or "").strip()
     if not spt:
