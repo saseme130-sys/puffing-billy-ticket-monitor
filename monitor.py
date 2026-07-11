@@ -28,6 +28,10 @@ BASE = "https://book.puffingbillyrailway.org.au/BookingProduct/AvailabilityBook/
 BOOKING_URL = "https://book.puffingbillyrailway.org.au/BookingProduct/AvailabilityBook/?"
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36")
+PASSENGER_FARES = {
+    "adult": "2867_2810",
+    "child": "2867_2812",
+}
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CONFIG_PATH = os.path.join(HERE, "config.json")
@@ -90,10 +94,10 @@ def fetch_oid_token():
     return m.group(1)
 
 
-def fetch_availability(token):
-    """带 token 调用 updateAvailability，返回 availability 列表。"""
+def _booking_post(token, action, data):
+    """在同一个订票会话中调用指定 AJAX action。"""
     now = datetime.now().strftime("%Y-%m-%d, %H:%M:%S:000")
-    url = BASE + "&updateAvailability&localtime=" + urllib.parse.quote(now)
+    url = BASE + "&{}&localtime=".format(action) + urllib.parse.quote(now)
     cookie = ("currentbrandWAFApplicationBookingProduct=PUFFING%20BILLY; "
               "oidToken=" + token)
     headers = {
@@ -103,7 +107,40 @@ def fetch_availability(token):
         "Referer": BASE,
         "Cookie": cookie,
     }
-    raw = http(url, data="BookingCategory=1", headers=headers)
+    return http(url, data=data, headers=headers)
+
+
+def fetch_availability(token, passengers):
+    """先设置乘客数量，再返回该组合实际可订的 availability 列表。"""
+    updates = []
+    for passenger_type, fare_id in PASSENGER_FARES.items():
+        try:
+            count = int(passengers.get(passenger_type, 0))
+        except (TypeError, ValueError):
+            raise RuntimeError("乘客数量无效: {}".format(passenger_type))
+        if count < 0:
+            raise RuntimeError("乘客数量无效: {}".format(passenger_type))
+        updates.extend((passenger_type, fare_id) for _ in range(count))
+
+    if not updates:
+        raise RuntimeError("未配置有效乘客，拒绝使用空会话查询")
+
+    for passenger_type, fare_id in updates:
+        body = "&fare={}&roomtype=&increment=1".format(fare_id)
+        raw = _booking_post(token, "updateBookingFareQty", body)
+        try:
+            response = json.loads(raw)
+        except ValueError as e:
+            raise RuntimeError(
+                "设置乘客数量失败({}): {}".format(passenger_type, e))
+        if response.get("result") != "OK":
+            raise RuntimeError(
+                "设置乘客数量失败({}): {}".format(
+                    passenger_type,
+                    response.get("message") or response.get("result"),
+                ))
+
+    raw = _booking_post(token, "updateAvailability", "BookingCategory=1")
     if not raw or raw.strip() in ("", "[]"):
         raise RuntimeError("接口返回空（session 失效？将重取 token）")
     obj = json.loads(raw)
@@ -296,7 +333,7 @@ def build_notice(target_date, ev, cfg, kind):
 
 def check_once(cfg, state, do_notify=True):
     token = fetch_oid_token()
-    av = fetch_availability(token)
+    av = fetch_availability(token, cfg.get("passengers", {}))
     ncfg = cfg.get("notify", {})
     renotify_s = int(ncfg.get("renotify_available_every_minutes", 30)) * 60
     now_ts = time.time()

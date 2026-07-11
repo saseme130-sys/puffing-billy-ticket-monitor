@@ -120,6 +120,8 @@ class ServerChanTests(unittest.TestCase):
 
         self.assertEqual(result, 3)
         send_all.assert_called_once()
+        availability.assert_called_once_with(
+            "oid", {"adult": 2, "child": 1})
 
     @patch("check_ticket.monitor.fetch_availability")
     @patch("check_ticket.monitor.fetch_oid_token")

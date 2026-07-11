@@ -63,7 +63,7 @@ def main():
 
     try:
         token = monitor.fetch_oid_token()
-        av = monitor.fetch_availability(token)
+        av = monitor.fetch_availability(token, cfg.get("passengers", {}))
     except Exception as e:
         print("查询失败: {}".format(e))
         return 2  # 让 Actions 标记失败，便于发现网站变动
