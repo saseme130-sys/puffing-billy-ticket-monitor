@@ -48,10 +48,14 @@ env -u GH_TOKEN gh secret set SERVERCHAN_KEY
 网站的余票其实来自一个后台 JSON 接口。bot 直接、轻量地查这个接口（不用一直开浏览器）：
 
 1. 打开订票页，自动提取会话 token（`oidToken`）
-2. 调用 `updateAvailability` 接口，拿到每天每条线路的状态
-3. 找目标日期的 **BEL-LAK** 车次状态
-4. 一旦从"无票"变为 **Available** → 发通知（微信 + Mac 弹窗 + 终端响铃）
-5. 只在状态**跳变**时通知，不刷屏；可订时按设定间隔重复提醒防错过
+2. 在同一订票会话中设置 **2 成人 + 1 儿童**
+3. 调用 `updateAvailability`，获取该乘客组合实际可订的日期和线路
+4. 找目标日期的 **BEL-LAK** 车次状态
+5. 只有完整 3 人组合变为 **Available** 才通知（微信 + Mac 弹窗 + 终端响铃）
+6. 只在状态**跳变**时通知，不刷屏；可订时按设定间隔重复提醒防错过
+
+> 不能直接使用未选择乘客时的概览状态：它可能显示 `Available`，但实际
+> 选择 2 成人 + 1 儿童后仍是 `Sold out`。
 
 状态含义：`Available`(可订) / `Sold out`(售罄) / `Not available`(不发车) / `Departed`(已发车)。
 
@@ -103,6 +107,7 @@ Mac 需装了 Python 3（系统自带）。**无需 pip 安装任何东西**。
 |---|---|
 | `target_dates` | 要监控的日期，格式 `DD/MM/YYYY`，可填多个 |
 | `route_code` | 车次代码。`BEL-LAK`=Belgrave→Lakeside；`BEL-GEM`=Belgrave→Gembrook |
+| `passengers` | 精确校验的乘客数量；当前为 2 成人 + 1 儿童 |
 | `poll_interval_seconds` | 轮询间隔（秒），默认 240=4分钟 |
 | `jitter_seconds` | 随机抖动，避免规律请求（礼貌+防封） |
 | `serverchan_key` | Server酱 SendKey；生产环境使用 GitHub Secret |
