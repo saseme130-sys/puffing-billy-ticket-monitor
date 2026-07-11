@@ -112,11 +112,15 @@ def _booking_post(token, action, data):
 
 def fetch_availability(token, passengers):
     """先设置乘客数量，再返回该组合实际可订的 availability 列表。"""
+    unknown_types = set(passengers) - set(PASSENGER_FARES)
+    if unknown_types:
+        raise RuntimeError(
+            "不支持的乘客类型: {}".format(", ".join(sorted(unknown_types))))
+
     updates = []
     for passenger_type, fare_id in PASSENGER_FARES.items():
-        try:
-            count = int(passengers.get(passenger_type, 0))
-        except (TypeError, ValueError):
+        count = passengers.get(passenger_type, 0)
+        if isinstance(count, bool) or not isinstance(count, int):
             raise RuntimeError("乘客数量无效: {}".format(passenger_type))
         if count < 0:
             raise RuntimeError("乘客数量无效: {}".format(passenger_type))
@@ -146,7 +150,10 @@ def fetch_availability(token, passengers):
     obj = json.loads(raw)
     if obj.get("result") not in (None, "OK"):
         raise RuntimeError("接口 result={}".format(obj.get("result")))
-    return obj.get("availability", [])
+    availability = obj.get("availability")
+    if not isinstance(availability, list):
+        raise RuntimeError("接口缺少有效 availability 列表")
+    return availability
 
 
 def evaluate_date(av_list, target_date, route_code):

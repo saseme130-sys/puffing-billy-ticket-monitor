@@ -48,6 +48,29 @@ class PassengerAwareAvailabilityTests(unittest.TestCase):
             monitor.fetch_availability(
                 "token-123", {"adult": 0, "child": 0})
 
+    def test_rejects_unknown_passenger_types(self):
+        with self.assertRaisesRegex(RuntimeError, "不支持的乘客类型"):
+            monitor.fetch_availability(
+                "token-123", {"adult": 2, "child": 1, "toddler": 1})
+
+    def test_rejects_fractional_passenger_counts(self):
+        with self.assertRaisesRegex(RuntimeError, "乘客数量无效"):
+            monitor.fetch_availability(
+                "token-123", {"adult": 2.5, "child": 1})
+
+    def test_requires_availability_list_in_response(self):
+        responses = [
+            json.dumps({"result": "OK"}),
+            json.dumps({"result": "OK"}),
+            json.dumps({"result": "OK"}),
+            json.dumps({"result": "OK"}),
+        ]
+
+        with patch("monitor.http", side_effect=responses):
+            with self.assertRaisesRegex(RuntimeError, "availability"):
+                monitor.fetch_availability(
+                    "token-123", {"adult": 2, "child": 1})
+
     @patch("monitor.save_json")
     @patch("monitor.fetch_availability", return_value=[])
     @patch("monitor.fetch_oid_token", return_value="token-123")
