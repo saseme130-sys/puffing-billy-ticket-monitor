@@ -30,9 +30,11 @@ _DECIMAL_INT_RE = re.compile(r"^[0-9]+$")
 
 
 def _parse_passenger_override(name):
-    raw = os.getenv(name, "").strip()
-    if not raw:
+    if name not in os.environ:
         return None
+    raw = os.environ[name]
+    if raw.strip() == "":
+        raise ValueError("{} 不能为空".format(name))
     if not _DECIMAL_INT_RE.fullmatch(raw):
         raise ValueError("{} 必须是非负整数".format(name))
     value = int(raw, 10)

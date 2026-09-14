@@ -163,6 +163,8 @@ class ServerChanTests(unittest.TestCase):
             {"ADULT_COUNT": "-1"},
             {"ADULT_COUNT": "1.5"},
             {"ADULT_COUNT": "two"},
+            {"ADULT_COUNT": ""},
+            {"CHILD_COUNT": "   "},
         ]
         for env in invalid_envs:
             with self.subTest(env=env), \
