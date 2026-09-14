@@ -13,20 +13,70 @@
   TEST_NOTIFICATION 设为 true 时只发送测试通知，不查询余票
   TARGET_DATES     （可选）逗号分隔，如 "29/08/2026,30/08/2026"，覆盖 config.json
   ROUTE_CODE       （可选）如 "BEL-LAK"
+  ADULT_COUNT      （可选）GitHub Actions 覆盖成人乘客数
+  CHILD_COUNT      （可选）GitHub Actions 覆盖儿童乘客数
 
 退出码：0=正常(无论是否有票)；非0=查询/网络异常(便于 Actions 标红重试)
 """
 
 import os
+import re
 import sys
 
 import monitor  # 复用抓取/解析/通知逻辑
+
+
+_DECIMAL_INT_RE = re.compile(r"^[0-9]+$")
+
+
+def _parse_passenger_override(name):
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return None
+    if not _DECIMAL_INT_RE.fullmatch(raw):
+        raise ValueError("{} 必须是非负整数".format(name))
+    value = int(raw, 10)
+    if value < 0:
+        raise ValueError("{} 不能小于 0".format(name))
+    return value
+
+
+def apply_passenger_overrides(cfg):
+    adult_override = _parse_passenger_override("ADULT_COUNT")
+    child_override = _parse_passenger_override("CHILD_COUNT")
+    if adult_override is None and child_override is None:
+        return cfg
+
+    passengers = dict(cfg.get("passengers", {}))
+    if adult_override is not None:
+        passengers["adult"] = adult_override
+    if child_override is not None:
+        passengers["child"] = child_override
+
+    adult = passengers.get("adult", 0)
+    child = passengers.get("child", 0)
+    if isinstance(adult, bool) or not isinstance(adult, int):
+        raise ValueError("ADULT_COUNT 解析后必须是整数")
+    if isinstance(child, bool) or not isinstance(child, int):
+        raise ValueError("CHILD_COUNT 解析后必须是整数")
+    if adult < 0 or child < 0:
+        raise ValueError("乘客数量不能小于 0")
+    if adult + child <= 0:
+        raise ValueError("至少需要 1 名乘客")
+
+    cfg["passengers"] = passengers
+    return cfg
 
 
 def main():
     cfg = monitor.load_json(monitor.CONFIG_PATH, {}) or {}
     cfg.setdefault("notify", {})
     cfg = monitor.apply_secret_overrides(cfg)
+    try:
+        cfg = apply_passenger_overrides(cfg)
+    except ValueError as e:
+        print("乘客数量配置无效: {}".format(e))
+        return 1
 
     dates_env = os.getenv("TARGET_DATES", "").strip()
     if dates_env:

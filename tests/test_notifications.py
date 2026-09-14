@@ -123,6 +123,61 @@ class ServerChanTests(unittest.TestCase):
         availability.assert_called_once_with(
             "oid", {"adult": 2, "child": 1})
 
+    @patch("check_ticket.monitor.fetch_availability", return_value=[])
+    @patch("check_ticket.monitor.fetch_oid_token", return_value="oid")
+    def test_github_actions_passenger_overrides_replace_configured_counts(
+            self, _token, availability):
+        cfg = {
+            "target_dates": ["29/08/2026"],
+            "route_code": "BEL-LAK",
+            "route_name_hint": "Belgrave to Lakeside",
+            "passengers": {"adult": 2, "child": 1},
+            "notify": {},
+        }
+
+        with patch("check_ticket.monitor.load_json", return_value=cfg), \
+                patch("check_ticket.monitor.apply_secret_overrides",
+                      side_effect=lambda value: value), \
+                patch.dict(os.environ, {
+                    "ADULT_COUNT": "8",
+                    "CHILD_COUNT": "0",
+                }, clear=True):
+            result = check_ticket.main()
+
+        self.assertEqual(result, 0)
+        availability.assert_called_once_with("oid", {"adult": 8, "child": 0})
+
+    @patch("check_ticket.monitor.fetch_availability")
+    @patch("check_ticket.monitor.fetch_oid_token")
+    def test_invalid_passenger_overrides_fail_before_any_request(
+            self, fetch_token, fetch_availability):
+        cfg = {
+            "target_dates": ["29/08/2026"],
+            "route_code": "BEL-LAK",
+            "route_name_hint": "Belgrave to Lakeside",
+            "passengers": {"adult": 2, "child": 1},
+            "notify": {},
+        }
+
+        invalid_envs = [
+            {"ADULT_COUNT": "-1"},
+            {"ADULT_COUNT": "1.5"},
+            {"ADULT_COUNT": "two"},
+        ]
+        for env in invalid_envs:
+            with self.subTest(env=env), \
+                    patch("check_ticket.monitor.load_json",
+                          return_value=cfg), \
+                    patch("check_ticket.monitor.apply_secret_overrides",
+                          side_effect=lambda value: value), \
+                    patch.dict(os.environ, env, clear=True):
+                result = check_ticket.main()
+
+            self.assertEqual(result, 1)
+
+        fetch_token.assert_not_called()
+        fetch_availability.assert_not_called()
+
     @patch("check_ticket.monitor.fetch_availability")
     @patch("check_ticket.monitor.fetch_oid_token")
     @patch("check_ticket.monitor.send_all", return_value=True)
