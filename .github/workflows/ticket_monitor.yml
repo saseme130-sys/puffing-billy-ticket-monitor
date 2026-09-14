@@ -36,4 +36,6 @@ jobs:
           TEST_NOTIFICATION: ${{ inputs.test_notification || 'false' }}
           TARGET_DATES: ${{ vars.TARGET_DATES }}
           ROUTE_CODE: ${{ vars.ROUTE_CODE }}
+          ADULT_COUNT: ${{ vars.ADULT_COUNT }}
+          CHILD_COUNT: ${{ vars.CHILD_COUNT }}
         run: python check_ticket.py

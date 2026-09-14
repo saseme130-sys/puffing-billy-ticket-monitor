@@ -2,8 +2,8 @@
 
 监控 Puffing Billy Railway 指定日期/车次的余票，**出票立刻微信通知**你去抢。
 
-当前配置目标：**2026-08-29（8/29）· Belgrave → Lakeside（BEL-LAK）· 2 成人 + 1 儿童**
-> 该日期目前是 **Sold out**，bot 会一直盯着，一旦有人退票/放票变为可订，马上通知。
+当前配置目标：**2026-10-05（10/05）· Belgrave → Lakeside（BEL-LAK）· 8 成人 + 0 儿童**
+> 这是当前唯一生效的目标；每次收到新的监控请求，都会直接替换掉之前的目标日期、车次和乘客数量。
 
 ---
 
@@ -15,6 +15,7 @@
 - 定时：`.github/workflows/ticket_monitor.yml`，cron `0 * * * *`（每小时整点）
 - 通知：**Server酱微信推送**
 - 逻辑：`check_ticket.py` 无状态查询，**只有目标车次变为可订才推送微信**，售罄则静默
+- 重要：当前任务会覆盖前一次监控目标，不会与旧目标并行保留
 
 ### 日常操作（在个人号仓库上）
 
@@ -29,8 +30,10 @@ env -u GH_TOKEN gh workflow run ticket_monitor.yml -f test_notification=true
 env -u GH_TOKEN gh run list --workflow=ticket_monitor.yml --limit 5
 
 # 改监控日期 / 车次（改完下次运行即生效，无需改代码）
-env -u GH_TOKEN gh variable set TARGET_DATES --body "29/08/2026"   # 多个用逗号分隔
+env -u GH_TOKEN gh variable set TARGET_DATES --body "05/10/2026"   # 多个用逗号分隔
 env -u GH_TOKEN gh variable set ROUTE_CODE   --body "BEL-LAK"
+env -u GH_TOKEN gh variable set ADULT_COUNT  --body "8"
+env -u GH_TOKEN gh variable set CHILD_COUNT  --body "0"
 # 更新 Server酱 SendKey（通过交互输入，避免出现在命令历史）
 env -u GH_TOKEN gh secret set SERVERCHAN_KEY
 ```
@@ -48,14 +51,14 @@ env -u GH_TOKEN gh secret set SERVERCHAN_KEY
 网站的余票其实来自一个后台 JSON 接口。bot 直接、轻量地查这个接口（不用一直开浏览器）：
 
 1. 打开订票页，自动提取会话 token（`oidToken`）
-2. 在同一订票会话中设置 **2 成人 + 1 儿童**
+2. 在同一订票会话中设置 **8 成人 + 0 儿童**
 3. 调用 `updateAvailability`，获取该乘客组合实际可订的日期和线路
 4. 找目标日期的 **BEL-LAK** 车次状态
-5. 只有完整 3 人组合变为 **Available** 才通知（微信 + Mac 弹窗 + 终端响铃）
+5. 只有 **8 成人 + 0 儿童** 这个完整组合变为 **Available** 才通知（微信 + Mac 弹窗 + 终端响铃）
 6. 只在状态**跳变**时通知，不刷屏；可订时按设定间隔重复提醒防错过
 
 > 不能直接使用未选择乘客时的概览状态：它可能显示 `Available`，但实际
-> 选择 2 成人 + 1 儿童后仍是 `Sold out`。
+> 选择 8 成人 + 0 儿童后仍是 `Sold out`。
 
 状态含义：`Available`(可订) / `Sold out`(售罄) / `Not available`(不发车) / `Departed`(已发车)。
 
@@ -107,7 +110,7 @@ Mac 需装了 Python 3（系统自带）。**无需 pip 安装任何东西**。
 |---|---|
 | `target_dates` | 要监控的日期，格式 `DD/MM/YYYY`，可填多个 |
 | `route_code` | 车次代码。`BEL-LAK`=Belgrave→Lakeside；`BEL-GEM`=Belgrave→Gembrook |
-| `passengers` | 精确校验的乘客数量；当前为 2 成人 + 1 儿童 |
+| `passengers` | 精确校验的乘客数量；当前为 8 成人 + 0 儿童 |
 | `poll_interval_seconds` | 轮询间隔（秒），默认 240=4分钟 |
 | `jitter_seconds` | 随机抖动，避免规律请求（礼貌+防封） |
 | `serverchan_key` | Server酱 SendKey；生产环境使用 GitHub Secret |
